@@ -1,12 +1,9 @@
-#include <iostream>
-using namespace std;
-
 int bad_global = -1;
 
 void print()
 {
-    cout << "hallo" << endl;
-    int variable = 0;
+printf("hi!\n");
+  int variable = 0;
 }
 
 int main()

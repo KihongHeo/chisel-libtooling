@@ -2,7 +2,6 @@
 #define TRANSFORMER_HPP
 
 #include <clang/ASTMatchers/ASTMatchFinder.h>
-
 namespace clang
 {
     class ASTContext;
@@ -10,7 +9,7 @@ namespace clang
     class Rewriter;
 }
 
-class Transformer : public clang::ast_matchers::MatchFinder::MatchCallback
+class Transformer
 {
     protected:
 
@@ -20,9 +19,6 @@ class Transformer : public clang::ast_matchers::MatchFinder::MatchCallback
     public:
 
         explicit Transformer(clang::ASTContext &context, clang::Rewriter &rewriter);
-        
-        virtual void start() = 0;
-        virtual void print(clang::raw_ostream &stream) = 0;
 };
 
 #endif

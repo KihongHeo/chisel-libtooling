@@ -5,21 +5,18 @@
 #include <clang/AST/ASTConsumer.h>
 #include <clang/Rewrite/Core/Rewriter.h>
 
-namespace clang
-{
-    class ASTContext;
-}
+using namespace clang;
 
 class XConsumer : public clang::ASTConsumer 
 {
     private:
     
-        clang::Rewriter rewriter;
+        Rewriter rewriter;
 
     public:
 
-        explicit XConsumer(clang::ASTContext &context);
-        virtual void HandleTranslationUnit(clang::ASTContext &context) override;
+        explicit XConsumer(ASTContext &context);
+        virtual void HandleTranslationUnit(ASTContext &context) override;
 };
 
 #endif

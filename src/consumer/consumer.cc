@@ -1,7 +1,8 @@
 #include "consumer.h"
 
-#include "../finder/integervariablefinder.h"
-#include "../transformer/functioncalltransformer.h"
+#include "../finder/global_element_finder.h"
+#include "../transformer/global_element_remover.h"
+#include <clang/ASTMatchers/ASTMatchers.h>
 
 XConsumer::XConsumer(clang::ASTContext &context)
 {}
@@ -10,13 +11,12 @@ void XConsumer::HandleTranslationUnit(clang::ASTContext &context)
 {
     rewriter.setSourceMgr(context.getSourceManager(), context.getLangOpts());
     
-    FunctionCallTransformer fntransformer(context, rewriter);
-    
-    fntransformer.start();
-    fntransformer.print(llvm::outs());
-    
-    //IntegerVariableFinder intFinder(context);
-    //intFinder.start();
+    GlobalElementFinder globalElementFinder(context);
+    globalElementFinder.start();
+
+    GlobalElementRemover globalElementRemover(context, rewriter);
+for (auto g : globalElementFinder.globalElements)
+    globalElementRemover.remove(g);
 
     auto buffer = rewriter.getRewriteBufferFor(context.getSourceManager().getMainFileID());
 
