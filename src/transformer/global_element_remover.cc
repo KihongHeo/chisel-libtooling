@@ -9,18 +9,28 @@ using namespace clang;
 using namespace clang::ast_matchers;
 using namespace llvm;
 
-GlobalElementRemover::GlobalElementRemover(ASTContext &context, Rewriter &rewriter): context(context), rewriter(rewriter){ }
+GlobalElementRemover::GlobalElementRemover(ASTContext &context, Rewriter &rewriter) : context(context), rewriter(rewriter) {
+}
 
-void GlobalElementRemover::remove(const Decl *decl)
-{
-        if (const FunctionDecl *d = dyn_cast<const FunctionDecl>(decl)) {
-            rewriter.InsertTextBefore(d->getSourceRange().getBegin(), "/*");
-          //rewriter.RemoveText(d->getSourceRange().getBegin(), 10);  
-          errs() << "** Rewrote funct decl\n";
-        }
-        if (const VarDecl *d = dyn_cast<const VarDecl>(decl)) {
-            rewriter.InsertTextBefore(d->getSourceRange().getBegin(), "/*");
-          //rewriter.RemoveText(d->getSourceRange().getBegin(), 10);  
-          errs() << "** Rewrote var del\n";
-        }
+void GlobalElementRemover::remove(const Decl *decl) {
+  FullSourceLoc start = context.getFullLoc(decl->getSourceRange().getBegin());
+  FullSourceLoc end = context.getFullLoc(decl->getSourceRange().getEnd().getLocWithOffset(1));
+
+  /*if (start.isValid() && end.isValid())
+    llvm::outs() << "Found at "
+                 << start.getSpellingLineNumber() << ","
+                 << start.getSpellingColumnNumber() << "-"
+                 << end.getSpellingLineNumber() << "," << end.getSpellingColumnNumber() <<"\n";*/
+  if (const FunctionDecl *d = dyn_cast<const FunctionDecl>(decl)) {
+    // rewriter.InsertTextBefore(start, "/*");
+    // rewriter.InsertTextAfter(end, "*/");
+    rewriter.RemoveText(SourceRange(start, end));
+    errs() << "** Rewrote funct decl\n";
+  }
+  if (const VarDecl *d = dyn_cast<const VarDecl>(decl)) {
+    // rewriter.InsertTextBefore(start, "/*");
+    // rewriter.InsertTextAfter(end, "*/");
+    rewriter.RemoveText(SourceRange(start, end));
+    errs() << "** Rewrote var del\n";
+  }
 }
