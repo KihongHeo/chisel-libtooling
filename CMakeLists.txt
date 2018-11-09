@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(clang-tool)
+project(chisel)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/)
 
 execute_process (
@@ -12,6 +12,3 @@ file(WRITE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/builtInInclude.path" "${clangBuilt
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 add_subdirectory(src)
-
-
-
