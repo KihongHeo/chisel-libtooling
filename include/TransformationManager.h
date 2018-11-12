@@ -4,13 +4,18 @@
 #include <cassert>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "llvm/Support/raw_ostream.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 
 class Transformation;
 namespace clang {
 class CompilerInstance;
 class Preprocessor;
+class Decl;
 } // namespace clang
 
 class TransformationManager {
@@ -23,11 +28,7 @@ public:
   static void registerTransformation(const char *TransName,
                                      Transformation *TransImpl);
 
-  static bool isCXXLangOpt();
-
   static bool isCLangOpt();
-
-  static bool isOpenCLLangOpt();
 
   static clang::Preprocessor &getPreprocessor();
 
@@ -62,16 +63,6 @@ public:
 
   void setOutputFileName(const std::string &FileName) {
     OutputFileName = FileName;
-  }
-
-  void setReplacement(const std::string &Str) {
-    Replacement = Str;
-    DoReplacement = true;
-  }
-
-  void setReferenceValue(const std::string &Str) {
-    ReferenceValue = Str;
-    CheckReference = true;
   }
 
   void setQueryInstanceFlag(bool Flag) { QueryInstanceOnly = Flag; }
@@ -117,15 +108,6 @@ private:
 
   bool QueryInstanceOnly;
 
-  bool DoReplacement;
-
-  std::string Replacement;
-
-  bool CheckReference;
-
-  std::string ReferenceValue;
-
-  // Unimplemented
   TransformationManager(const TransformationManager &);
 
   void operator=(const TransformationManager &);
@@ -142,7 +124,6 @@ public:
   }
 
 private:
-  // Unimplemented
   RegisterTransformation(const RegisterTransformation &);
 
   void operator=(const RegisterTransformation &);

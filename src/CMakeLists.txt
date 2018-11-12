@@ -16,6 +16,8 @@ set(CHISEL_SRC
         TransformationManager.cc
         Transformation.cc
         RemoveUnusedFunction.cc
+        SimplifyIf.cc
+        GlobalReduction.cc
         RewriteUtils.cc
 )
 

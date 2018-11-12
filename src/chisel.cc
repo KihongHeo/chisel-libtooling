@@ -42,10 +42,6 @@ static void PrintHelpMessage() {
   llvm::outs() << "  --transformations: ";
   llvm::outs() << "print the names of all available transformations\n";
 
-  llvm::outs() << "  --query-instances=<name>: ";
-  llvm::outs() << "query available transformation instances for a given ";
-  llvm::outs() << "transformation\n";
-
   llvm::outs() << "  --counter=<number>: ";
   llvm::outs() << "specify the instance of the transformation to perform\n";
 
@@ -55,18 +51,6 @@ static void PrintHelpMessage() {
   llvm::outs() << "rewrite multiple instances [counter,to-counter] ";
   llvm::outs() << "simultaneously. Note that currently only ";
   llvm::outs() << "replace-function-def-with-decl supports this feature.)\n";
-
-  llvm::outs() << "  --replacement=<string>: ";
-  llvm::outs() << "instead of performing normal rewriting, the candidate ";
-  llvm::outs() << "pointed by the counter will be replaced by the passed ";
-  llvm::outs() << "\"string\". Currently, this option works only with ";
-  llvm::outs() << "transformation expression-detector.\n";
-
-  llvm::outs() << "  --check-reference=<value>: ";
-  llvm::outs() << "insert code to check if the candidate designated by the ";
-  llvm::outs() << "counter equals to the reference value or not. Currently, ";
-  llvm::outs() << "this option works only with transformation ";
-  llvm::outs() << "expression-detector.\n";
 
   llvm::outs() << "  --output=<filename>: ";
   llvm::outs() << "specify where to output the transformed source code ";
@@ -102,12 +86,6 @@ static void HandleOneArgValue(const std::string &ArgValueStr, size_t SepPos) {
     if (TransMgr->setTransformation(ArgValue)) {
       Die("Invalid transformation[" + ArgValue + "]");
     }
-  } else if (!ArgName.compare("query-instances")) {
-    if (TransMgr->setTransformation(ArgValue)) {
-      Die("Invalid transformation[" + ArgValue + "]");
-    }
-    TransMgr->setQueryInstanceFlag(true);
-    TransMgr->setTransformationCounter(1);
   } else if (!ArgName.compare("counter")) {
     int Val;
     std::stringstream TmpSS(ArgValue);
@@ -130,10 +108,6 @@ static void HandleOneArgValue(const std::string &ArgValueStr, size_t SepPos) {
     TransMgr->setToCounter(Val);
   } else if (!ArgName.compare("output")) {
     TransMgr->setOutputFileName(ArgValue);
-  } else if (!ArgName.compare("replacement")) {
-    TransMgr->setReplacement(ArgValue);
-  } else if (!ArgName.compare("check-reference")) {
-    TransMgr->setReferenceValue(ArgValue);
   } else {
     DieOnBadCmdArg("--" + ArgValueStr);
   }
@@ -196,7 +170,8 @@ int main(int argc, char **argv) {
   if (TransMgr->getQueryInstanceFlag())
     TransMgr->outputNumTransformationInstances();
 
-  ////
+  // we can re-run everything
+  /*
   if (!TransMgr->initializeCompilerInstance(ErrorMsg))
     Die(ErrorMsg);
 
@@ -206,8 +181,7 @@ int main(int argc, char **argv) {
 
   if (TransMgr->getQueryInstanceFlag())
     TransMgr->outputNumTransformationInstances();
-
-  /////
+  */
 
   TransformationManager::Finalize();
   return 0;

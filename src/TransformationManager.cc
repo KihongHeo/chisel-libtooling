@@ -16,6 +16,7 @@
 
 using namespace clang;
 
+
 int TransformationManager::ErrorInvalidCounter = 1;
 
 TransformationManager *TransformationManager::Instance;
@@ -206,11 +207,11 @@ bool TransformationManager::verify(std::string &ErrorMsg, int &ErrorCode) {
   if (CurrentTransformationImpl->skipCounter())
     return true;
 
-  if (TransformationCounter <= 0) {
+  /*if (TransformationCounter <= 0) {
     ErrorMsg = "Invalid transformation counter!";
     ErrorCode = ErrorInvalidCounter;
     return false;
-  }
+  }*/
 
   if ((ToCounter > 0) && (ToCounter < TransformationCounter)) {
     ErrorMsg = "to-counter value cannot be smaller than counter value!";
@@ -263,8 +264,8 @@ void TransformationManager::outputNumTransformationInstances() {
 TransformationManager::TransformationManager()
     : CurrentTransformationImpl(NULL), TransformationCounter(-1), ToCounter(-1),
       SrcFileName(""), OutputFileName(""), CurrentTransName(""),
-      ClangInstance(NULL), QueryInstanceOnly(false), DoReplacement(false),
-      Replacement(""), CheckReference(false), ReferenceValue("") {
+      ClangInstance(NULL), QueryInstanceOnly(false)/*, DoReplacement(false),*/
+      /*Replacement(""), CheckReference(false), ReferenceValue("")*/ {
   // Nothing to do
 }
 
