@@ -36,7 +36,6 @@ static RegisterTransformation<GlobalReduction> Trans("global-reduction",
 
 bool GlobalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (FD->isThisDeclarationADefinition()) {
-    llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
     ConsumerInstance->decls.emplace_back(FD);
   }
   return true;
@@ -44,20 +43,17 @@ bool GlobalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
 bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
   if (VD->hasGlobalStorage()) {
-    llvm::outs() << "var decl " << VD->getNameAsString() << "\n";
     ConsumerInstance->decls.emplace_back(VD);
   }
   return true;
 }
 
 bool GlobalReductionCollectionVisitor::VisitRecordDecl(RecordDecl *RD) {
-  llvm::outs() << "record decl " << RD->getNameAsString() << "\n";
   ConsumerInstance->decls.emplace_back(RD);
   return true;
 }
 
 bool GlobalReductionCollectionVisitor::VisitTypedefDecl(TypedefDecl *TD) {
-  llvm::outs() << "typedef decl " << TD->getNameAsString() << "\n";
   ConsumerInstance->decls.emplace_back(TD);
   return true;
 }
@@ -88,7 +84,7 @@ void GlobalReduction::HandleTranslationUnit(ASTContext &Ctx) {
 }
 
 std::vector<std::vector<clang::Decl *>>
-GlobalReduction::split(std::vector<clang::Decl *> vec, int n) {
+GlobalReduction::split(std::vector<clang::Decl *> &vec, int n) {
   std::vector<std::vector<clang::Decl *>> result;
   int length = static_cast<int>(vec.size()) / n;
   int remain = static_cast<int>(vec.size()) % n;
@@ -103,15 +99,27 @@ GlobalReduction::split(std::vector<clang::Decl *> vec, int n) {
   return result;
 }
 
+bool GlobalReduction::contains(std::vector<clang::Decl *> vec, clang::Decl *d) {
+  for (auto v : vec) {
+    if (v->getSourceRange() == d->getSourceRange()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::vector<clang::Decl *>
-GlobalReduction::difference(std::vector<clang::Decl *> a,
-                            std::vector<clang::Decl *> b) {
+GlobalReduction::difference(std::vector<clang::Decl *> &a,
+                            std::vector<clang::Decl *> &b) {
   // a - b
   std::vector<clang::Decl *> minus;
+  if (a.size() == 0)
+    return minus;
+  if (b.size() == 0)
+    return a;
   for (clang::Decl *d : a) {
-    std::vector<clang::Decl *>::iterator it = std::find(b.begin(), b.end(), d);
-    if (it == b.end())
-      minus.emplace_back(*it);
+    if (!contains(b, d))
+      minus.emplace_back(d);
   }
   return minus;
 }
@@ -125,9 +133,7 @@ void GlobalReduction::prettyPrintSubset(std::vector<clang::Decl *> vec) {
 }
 
 int i = 0;
-void GlobalReduction::test(std::vector<clang::Decl *> toBeRemoved) {
-  llvm::outs() << "toberemoved size = " << toBeRemoved.size() << "\n";
-
+bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   const SourceManager *SM = &Context->getSourceManager();
   std::string revert = "";
   SourceLocation totalStart, totalEnd;
@@ -159,22 +165,21 @@ void GlobalReduction::test(std::vector<clang::Decl *> toBeRemoved) {
       replacement += " ";
   }
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), replacement);
-  auto buffer = TheRewriter.getRewriteBufferFor(
-      Context->getSourceManager().getMainFileID());
-  if (buffer != nullptr)
-    buffer->write(llvm::outs());
-
+  // auto buffer = TheRewriter.getRewriteBufferFor(
+  //    Context->getSourceManager().getMainFileID());
+  // if (buffer != nullptr)
+  //  buffer->write(llvm::outs());
   std::error_code error_code;
   llvm::raw_fd_ostream outFile("conditional.c", error_code,
                                llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
       .write(outFile);
   outFile.close();
-
-  if (!system("./test.sh")) {
-    llvm::outs() << "test result = succes!\n";
+  if (system("./test.sh") == 0) {
+    llvm::outs() << "ORACLE = YES!\n";
+    return true;
   } else {
-    llvm::outs() << "test result = fail!\n";
+    llvm::outs() << "ORACLE = NO!\n";
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     std::error_code error_code2;
     llvm::raw_fd_ostream outFile2("conditional.c", error_code2,
@@ -182,11 +187,11 @@ void GlobalReduction::test(std::vector<clang::Decl *> toBeRemoved) {
     TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
         .write(outFile2);
     outFile2.close();
+    return false;
   }
 }
 
-void GlobalReduction::ddmin(std::vector<clang::Decl *> decls) {
-  // prettyPrintSubset(decls);
+void GlobalReduction::ddmin(std::vector<clang::Decl *> &decls) {
   std::vector<Decl *> decls_;
   decls_ = std::move(decls);
   int n = 2;
@@ -195,10 +200,9 @@ void GlobalReduction::ddmin(std::vector<clang::Decl *> decls) {
     bool complementSucceeding = false;
 
     for (std::vector<Decl *> subset : subsets) {
-      llvm::outs() << "SUBSET SIZE = " << subset.size() << "\n";
       std::vector<Decl *> complement = difference(decls_, subset);
-      test(subset);
-      if (0) { // harness.run(complement) == TestHarness.FAIL) {
+      bool status = test(subset);
+      if (status) {
         decls_ = std::move(complement);
         n = std::max(n - 1, 2);
         complementSucceeding = true;
@@ -218,7 +222,6 @@ void GlobalReduction::ddmin(std::vector<clang::Decl *> decls) {
 }
 
 void GlobalReduction::globalReduction(void) {
-  llvm::outs() << "COLLECTED GLOBAL ELEMETS.\n";
   ddmin(decls);
   // const Expr *Cond = TheIfStmt->getCond();
   // TransAssert(Cond && "Bad Cond Expr!");

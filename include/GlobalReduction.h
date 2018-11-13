@@ -5,10 +5,10 @@
 #include <string>
 
 namespace clang {
-  class DeclGroupRef;
-  class ASTContext;
-  class Stmt;
-}
+class DeclGroupRef;
+class ASTContext;
+class Stmt;
+} // namespace clang
 
 class GlobalReductionCollectionVisitor;
 
@@ -30,22 +30,22 @@ private:
 
   void globalReduction(void);
 
-  std::vector<std::vector<clang::Decl *>> split(std::vector<clang::Decl *> vec,
-    int n);
+  std::vector<std::vector<clang::Decl *>> split(std::vector<clang::Decl *> &vec,
+                                                int n);
 
-  std::vector<clang::Decl *> difference(std::vector<clang::Decl *> a,
-    std::vector<clang::Decl *> b);
-
+  std::vector<clang::Decl *> difference(std::vector<clang::Decl *> &a,
+                                        std::vector<clang::Decl *> &b);
+  bool contains(std::vector<clang::Decl *> vec, clang::Decl *d);
   void prettyPrintSubset(std::vector<clang::Decl *> vec);
 
-  void ddmin(std::vector<clang::Decl *> decls);
-  
-  void test(std::vector<clang::Decl*> toBeRemoved);
-  
+  void ddmin(std::vector<clang::Decl *> &decls);
+
+  bool test(std::vector<clang::Decl *> &toBeRemoved);
+
   GlobalReductionCollectionVisitor *CollectionVisitor;
 
-  std::vector<clang::Decl*> decls;
-  
+  std::vector<clang::Decl *> decls;
+
   // Unimplemented
   GlobalReduction(void);
 
