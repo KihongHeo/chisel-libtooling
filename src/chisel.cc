@@ -1,16 +1,16 @@
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <stdlib.h>
-#include <sys/stat.h>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <stdlib.h>
 #include <string>
+#include <sys/stat.h>
 
-#include "Stats.h"
 #include "Options.h"
 #include "Report.h"
+#include "Stats.h"
 #include "TransformationManager.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -156,23 +156,26 @@ static void HandleOneArg(const char *Arg) {
 }
 
 void stat() {
-  //auto stats = Stats::getStatementCount(Option::inputFile.c_str());
+  // auto stats = Stats::getStatementCount(Option::inputFile.c_str());
   auto stats = Stats::getWordCount(Option::inputFile.c_str());
   std::cout << "# Words : " << stats << std::endl;
-  //std::cout << "# Functions  : " << stats[1] << std::endl;
-  //std::cout << "# Statements : " << stats[0] << std::endl;
+  // std::cout << "# Functions  : " << stats[1] << std::endl;
+  // std::cout << "# Statements : " << stats[0] << std::endl;
   exit(0);
 }
 
 int main(int argc, char **argv) {
-  Option::handleOptions(argc, argv);
-  if (Option::stat)
-    stat();
-  mkdir(Option::outputDir.c_str(), ACCESSPERMS);
+  //  Option::handleOptions(argc, argv);
+  //  if (Option::stat)
+  //    stat();
+  //  mkdir(Option::outputDir.c_str(), ACCESSPERMS);
+
+  Option::inputFile = "conditional.c";
+  Option::oracleFile = "./test.sh";
 
   if (Option::profile)
     Report::totalProfiler.startTimer();
- 
+
   TransMgr = TransformationManager::GetInstance();
   for (int i = 1; i < argc; i++) {
     HandleOneArg(argv[i]);
@@ -188,33 +191,15 @@ int main(int argc, char **argv) {
     Die(ErrorMsg);
   }
 
-  //if (TransMgr->getQueryInstanceFlag())
-  //  TransMgr->outputNumTransformationInstances();
+  if (TransMgr->getQueryInstanceFlag())
+    TransMgr->outputNumTransformationInstances();
 
   //  we can re-run everything
- 
-TransMgr = TransformationManager::GetInstance();
-  for (int i = 1; i < argc; i++) {
-    HandleOneArg(argv[i]);
-  }
-  if (!TransMgr->verify(ErrorMsg, ErrorCode))
-    Die(ErrorMsg);
-
-
-
-  if (!TransMgr->initializeCompilerInstance(ErrorMsg))
-    Die(ErrorMsg);
-
-  if (!TransMgr->doTransformation(ErrorMsg, ErrorCode)) {
-    Die(ErrorMsg);
-  }
-
   if (Option::profile)
     Report::totalProfiler.stopTimer();
 
-  //if (TransMgr->getQueryInstanceFlag())
-  //  TransMgr->outputNumTransformationInstances();
-
   TransformationManager::Finalize();
+  if (Option::profile)
+    Report::print();
   return 0;
 }

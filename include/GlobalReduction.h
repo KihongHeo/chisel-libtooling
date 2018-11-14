@@ -23,19 +23,15 @@ public:
 
 private:
   virtual void Initialize(clang::ASTContext &context);
-
   virtual bool HandleTopLevelDecl(clang::DeclGroupRef D);
-
   virtual void HandleTranslationUnit(clang::ASTContext &Ctx);
-
   void globalReduction(void);
-
-  std::vector<std::vector<clang::Decl *>> split(std::vector<clang::Decl *> &vec,
+  /*template <class T>
+  std::vector<std::vector<T>> split(std::vector<T> &vec,
                                                 int n);
-
   std::vector<clang::Decl *> difference(std::vector<clang::Decl *> &a,
                                         std::vector<clang::Decl *> &b);
-  bool contains(std::vector<clang::Decl *> vec, clang::Decl *d);
+  bool contains(std::vector<clang::Decl *> vec, clang::Decl *d);*/
   void prettyPrintSubset(std::vector<clang::Decl *> vec);
 
   void ddmin(std::vector<clang::Decl *> &decls);
