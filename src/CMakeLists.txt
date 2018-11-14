@@ -22,6 +22,7 @@ set(CHISEL_SRC
         utils/Counting.cc
         utils/Profiling.cc
         utils/Stats.cc
+        utils/StringUtils.cc
 )
 
 # remove trailing whitespaces
