@@ -13,12 +13,15 @@ set(CHISEL_SRC
 
         chisel.cc
         
-        TransformationManager.cc
-        Transformation.cc
-        RemoveUnusedFunction.cc
-        SimplifyIf.cc
-        GlobalReduction.cc
-        RewriteUtils.cc
+        core/TransformationManager.cc
+        core/Transformation.cc
+        core/GlobalReduction.cc
+        utils/RewriteUtils.cc
+        utils/Options.cc
+        utils/Report.cc
+        utils/Counting.cc
+        utils/Profiling.cc
+        utils/Stats.cc
 )
 
 # remove trailing whitespaces

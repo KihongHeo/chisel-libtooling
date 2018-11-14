@@ -170,8 +170,17 @@ int main(int argc, char **argv) {
   if (TransMgr->getQueryInstanceFlag())
     TransMgr->outputNumTransformationInstances();
 
-  // we can re-run everything
-  /*
+  //  we can re-run everything
+ 
+TransMgr = TransformationManager::GetInstance();
+  for (int i = 1; i < argc; i++) {
+    HandleOneArg(argv[i]);
+  }
+  if (!TransMgr->verify(ErrorMsg, ErrorCode))
+    Die(ErrorMsg);
+
+
+
   if (!TransMgr->initializeCompilerInstance(ErrorMsg))
     Die(ErrorMsg);
 
@@ -181,7 +190,7 @@ int main(int argc, char **argv) {
 
   if (TransMgr->getQueryInstanceFlag())
     TransMgr->outputNumTransformationInstances();
-  */
+  
 
   TransformationManager::Finalize();
   return 0;

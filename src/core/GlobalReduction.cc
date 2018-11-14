@@ -26,6 +26,7 @@ public:
   bool VisitVarDecl(VarDecl *VD);
   bool VisitRecordDecl(RecordDecl *RD);
   bool VisitTypedefDecl(TypedefDecl *TD);
+  bool VisitEnumDecl(EnumDecl *ED);
 
 private:
   GlobalReduction *ConsumerInstance;
@@ -35,14 +36,14 @@ static RegisterTransformation<GlobalReduction> Trans("global-reduction",
                                                      DescriptionMsg);
 
 bool GlobalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  if (FD->isThisDeclarationADefinition()) {
-    ConsumerInstance->decls.emplace_back(FD);
-  }
+  llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
+  ConsumerInstance->decls.emplace_back(FD);
   return true;
 }
 
 bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
   if (VD->hasGlobalStorage()) {
+    llvm::outs() << "var decl " << VD->getNameAsString() << "\n";
     ConsumerInstance->decls.emplace_back(VD);
   }
   return true;
@@ -50,11 +51,19 @@ bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
 
 bool GlobalReductionCollectionVisitor::VisitRecordDecl(RecordDecl *RD) {
   ConsumerInstance->decls.emplace_back(RD);
+  llvm::outs() << "record decl " << RD->getNameAsString() << "\n";
   return true;
 }
 
 bool GlobalReductionCollectionVisitor::VisitTypedefDecl(TypedefDecl *TD) {
+  llvm::outs() << "typedef decl " << TD->getNameAsString() << "\n";
   ConsumerInstance->decls.emplace_back(TD);
+  return true;
+}
+
+bool GlobalReductionCollectionVisitor::VisitEnumDecl(EnumDecl *ED) {
+  llvm::outs() << "enum decl " << ED->getNameAsString() << "\n";
+  ConsumerInstance->decls.emplace_back(ED);
   return true;
 }
 
@@ -138,32 +147,34 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   std::string revert = "";
   SourceLocation totalStart, totalEnd;
   totalStart = toBeRemoved.front()->getSourceRange().getBegin();
-  int index = 0;
   for (auto d : toBeRemoved) {
     SourceLocation start = d->getSourceRange().getBegin();
     SourceLocation end;
 
-    if (FunctionDecl *FD = dyn_cast<FunctionDecl>(d)) {
+    FunctionDecl *FD = dyn_cast<FunctionDecl>(d);
+    if (FD && FD->isThisDeclarationADefinition()) {
       end = FD->getSourceRange().getEnd().getLocWithOffset(1);
     } else {
       end = RewriteHelper->getEndLocationUntil(d->getSourceRange(), ';')
                 .getLocWithOffset(1);
     }
     totalEnd = end;
-    llvm::StringRef ref = Lexer::getSourceText(
-        CharSourceRange::getCharRange(SourceRange(start, end)), *SM,
-        LangOptions());
-    revert += std::string(ref.str()) +
-              ((index == toBeRemoved.size() - 1) ? "" : "\n");
-    index++;
   }
+  llvm::StringRef ref = Lexer::getSourceText(
+      CharSourceRange::getCharRange(SourceRange(totalStart, totalEnd)), *SM,
+      LangOptions());
+  revert = ref.str();
+
   std::string replacement = "";
   for (auto chr : revert) {
     if (chr == '\n')
       replacement += '\n';
-    else
+    else if (isprint(chr))
       replacement += " ";
+    else
+      replacement += chr;
   }
+
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), replacement);
   // auto buffer = TheRewriter.getRewriteBufferFor(
   //    Context->getSourceManager().getMainFileID());
@@ -176,10 +187,8 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
       .write(outFile);
   outFile.close();
   if (system("./test.sh") == 0) {
-    llvm::outs() << "ORACLE = YES!\n";
     return true;
   } else {
-    llvm::outs() << "ORACLE = NO!\n";
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     std::error_code error_code2;
     llvm::raw_fd_ostream outFile2("conditional.c", error_code2,
@@ -215,7 +224,6 @@ void GlobalReduction::ddmin(std::vector<clang::Decl *> &decls) {
         break;
       }
 
-      // increase set granularity
       n = std::min(n * 2, static_cast<int>(decls_.size()));
     }
   }
