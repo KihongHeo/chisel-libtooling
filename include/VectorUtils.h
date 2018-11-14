@@ -18,12 +18,10 @@ public:
     return result;
   }
 
-  template <typename T> static bool contains(std::vector<T> vec, T d) {
-    for (auto v : vec) {
-      if (v == d) {
+  template <typename T> static bool contains(std::vector<T> &vec, T d) {
+    for (auto const &v : vec)
+      if (v == d)
         return true;
-      }
-    }
     return false;
   }
 
@@ -35,7 +33,7 @@ public:
       return minus;
     if (b.size() == 0)
       return a;
-    for (T d : a) {
+    for (auto const &d : a) {
       if (!VectorUtils::contains<T>(b, d))
         minus.emplace_back(d);
     }

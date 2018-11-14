@@ -26,27 +26,16 @@ private:
   virtual bool HandleTopLevelDecl(clang::DeclGroupRef D);
   virtual void HandleTranslationUnit(clang::ASTContext &Ctx);
   void globalReduction(void);
-  /*template <class T>
-  std::vector<std::vector<T>> split(std::vector<T> &vec,
-                                                int n);
-  std::vector<clang::Decl *> difference(std::vector<clang::Decl *> &a,
-                                        std::vector<clang::Decl *> &b);
-  bool contains(std::vector<clang::Decl *> vec, clang::Decl *d);*/
   void prettyPrintSubset(std::vector<clang::Decl *> vec);
-
   void ddmin(std::vector<clang::Decl *> &decls);
-
   bool test(std::vector<clang::Decl *> &toBeRemoved);
-
   GlobalReductionCollectionVisitor *CollectionVisitor;
 
-  std::vector<clang::Decl *> decls;
-
-  // Unimplemented
   GlobalReduction(void);
-
   GlobalReduction(const GlobalReduction &);
-
   void operator=(const GlobalReduction &);
+
+  std::vector<clang::Decl *> decls;
+  std::vector<clang::Stmt *> functionBodies;
 };
 #endif

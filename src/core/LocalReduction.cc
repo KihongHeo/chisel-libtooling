@@ -8,7 +8,7 @@
 #include <sstream>
 
 #include "CommonStatementVisitor.h"
-#include "GlobalReduction.h"
+#include "LocalReduction.h"
 #include "Options.h"
 #include "RewriteUtils.h"
 #include "TransformationManager.h"
@@ -16,44 +16,33 @@
 
 using namespace clang;
 
-static const char *DescriptionMsg = "Perform global-level reduction";
+static const char *DescriptionMsg = "Perform local-level reduction";
 
-class GlobalReductionCollectionVisitor
-    : public RecursiveASTVisitor<GlobalReductionCollectionVisitor> {
+class LocalReductionCollectionVisitor
+    : public RecursiveASTVisitor<LocalReductionCollectionVisitor> {
 public:
-  explicit GlobalReductionCollectionVisitor(GlobalReduction *Instance)
+  explicit LocalReductionCollectionVisitor(LocalReduction *Instance)
       : ConsumerInstance(Instance) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD);
-  bool VisitVarDecl(VarDecl *VD);
-  bool VisitRecordDecl(RecordDecl *RD);
-  bool VisitTypedefDecl(TypedefDecl *TD);
-  bool VisitEnumDecl(EnumDecl *ED);
 
 private:
-  GlobalReduction *ConsumerInstance;
+  LocalReduction *ConsumerInstance;
 };
 
-static RegisterTransformation<GlobalReduction> Trans("global-reduction",
-                                                     DescriptionMsg);
+static RegisterTransformation<LocalReduction> Trans("local-reduction",
+                                                    DescriptionMsg);
 
-bool GlobalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  // if (Option::verbose)
-  llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
-  ConsumerInstance->decls.emplace_back(FD);
+bool LocalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  if (Option::verbose)
+    llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
   if (FD->isThisDeclarationADefinition()) {
-    /*auto body = FD->getBody();
     ConsumerInstance->functionBodies.emplace_back(FD->getBody());
-    for (Stmt::child_iterator i = body->child_begin(), e = body->child_end(); i
-    != e; ++i) { Stmt* currStmt = *i; llvm::errs() << "***** a child\n";
-      currStmt->dump();
-    }*/
-    FD->dump();
   }
   return true;
 }
 
-bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
+/*bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
   if (VD->hasGlobalStorage()) {
     if (Option::verbose)
       llvm::outs() << "var decl " << VD->getNameAsString() << "\n";
@@ -81,33 +70,25 @@ bool GlobalReductionCollectionVisitor::VisitEnumDecl(EnumDecl *ED) {
     llvm::outs() << "enum decl " << ED->getNameAsString() << "\n";
   ConsumerInstance->decls.emplace_back(ED);
   return true;
-}
+}*/
 
-void GlobalReduction::Initialize(ASTContext &context) {
+void LocalReduction::Initialize(ASTContext &context) {
   Transformation::Initialize(context);
-  CollectionVisitor = new GlobalReductionCollectionVisitor(this);
+  CollectionVisitor = new LocalReductionCollectionVisitor(this);
 }
 
-bool GlobalReduction::HandleTopLevelDecl(DeclGroupRef D) {
+bool LocalReduction::HandleTopLevelDecl(DeclGroupRef D) {
   for (DeclGroupRef::iterator I = D.begin(), E = D.end(); I != E; ++I) {
     CollectionVisitor->TraverseDecl(*I);
   }
   return true;
 }
 
-void GlobalReduction::HandleTranslationUnit(ASTContext &Ctx) {
-  globalReduction();
+void LocalReduction::HandleTranslationUnit(ASTContext &Ctx) {
+  localReduction();
 }
 
-void GlobalReduction::prettyPrintSubset(std::vector<clang::Decl *> vec) {
-  for (auto const &d : vec) {
-    d->dump();
-    llvm::outs() << "===============\n";
-  }
-  llvm::outs() << "\n";
-}
-
-bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
+bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
   const SourceManager *SM = &Context->getSourceManager();
   std::string revert = "";
   SourceLocation totalStart, totalEnd;
@@ -116,9 +97,12 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
     SourceLocation start = d->getSourceRange().getBegin();
     SourceLocation end;
 
-    FunctionDecl *FD = dyn_cast<FunctionDecl>(d);
-    if (FD && FD->isThisDeclarationADefinition()) {
-      end = FD->getSourceRange().getEnd().getLocWithOffset(1);
+    if (CompoundStmt *CS = dyn_cast<CompoundStmt>(d)) {
+      end = CS->getSourceRange().getEnd().getLocWithOffset(1);
+    } else if (IfStmt *IS = dyn_cast<IfStmt>(d)) {
+      end = IS->getSourceRange().getEnd().getLocWithOffset(1);
+    } else if (WhileStmt *WS = dyn_cast<WhileStmt>(d)) {
+      end = WS->getSourceRange().getEnd().getLocWithOffset(1);
     } else {
       end = RewriteHelper->getEndLocationUntil(d->getSourceRange(), ';')
                 .getLocWithOffset(1);
@@ -129,7 +113,6 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
       CharSourceRange::getCharRange(SourceRange(totalStart, totalEnd)), *SM,
       LangOptions());
   revert = ref.str();
-
   std::string replacement = "";
   for (auto const &chr : revert) {
     if (chr == '\n')
@@ -142,9 +125,9 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
 
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), replacement);
   // auto buffer = TheRewriter.getRewriteBufferFor(
-  //    Context->getSourceManager().getMainFileID());
+  //   Context->getSourceManager().getMainFileID());
   // if (buffer != nullptr)
-  //  buffer->write(llvm::outs());
+  // buffer->write(llvm::outs());
   std::error_code error_code;
   llvm::raw_fd_ostream outFile("mkdir-5.2.1.c", error_code,
                                llvm::sys::fs::F_None);
@@ -154,6 +137,7 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   if (system(Option::oracleFile.c_str()) == 0) {
     return true;
   } else {
+    llvm::outs() << "******** REVERT *********\n";
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     std::error_code error_code2;
     llvm::raw_fd_ostream outFile2("mkdir-5.2.1.c", error_code2,
@@ -165,21 +149,21 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   }
 }
 
-void GlobalReduction::ddmin(std::vector<clang::Decl *> &decls) {
-  std::vector<Decl *> decls_;
-  decls_ = std::move(decls);
+void LocalReduction::ddmin(std::vector<clang::Stmt *> &stmts) {
+  std::vector<Stmt *> stmts_;
+  stmts_ = std::move(stmts);
   int n = 2;
-  while (decls_.size() >= 1) {
-    std::vector<std::vector<clang::Decl *>> subsets =
-        VectorUtils::split<clang::Decl *>(decls_, n);
+  while (stmts_.size() >= 1) {
+    std::vector<std::vector<clang::Stmt *>> subsets =
+        VectorUtils::split<clang::Stmt *>(stmts_, n);
     bool complementSucceeding = false;
 
-    for (std::vector<Decl *> &subset : subsets) {
-      std::vector<Decl *> complement =
-          VectorUtils::difference<clang::Decl *>(decls_, subset);
+    for (std::vector<Stmt *> &subset : subsets) {
+      std::vector<Stmt *> complement =
+          VectorUtils::difference<clang::Stmt *>(stmts_, subset);
       bool status = test(subset);
       if (status) {
-        decls_ = std::move(complement);
+        stmts_ = std::move(complement);
         n = std::max(n - 1, 2);
         complementSucceeding = true;
         break;
@@ -187,17 +171,28 @@ void GlobalReduction::ddmin(std::vector<clang::Decl *> &decls) {
     }
 
     if (!complementSucceeding) {
-      if (n == decls_.size()) {
+      if (n == stmts_.size()) {
         break;
       }
 
-      n = std::min(n * 2, static_cast<int>(decls_.size()));
+      n = std::min(n * 2, static_cast<int>(stmts_.size()));
     }
   }
 }
 
-void GlobalReduction::globalReduction(void) {
-  ddmin(decls);
+void LocalReduction::localReduction(void) {
+  for (auto const &body : functionBodies) {
+    // hdd(body);
+    llvm::outs() << "DDMIN ON FUNCTION!\n";
+    std::vector<Stmt *> children;
+    for (Stmt::child_iterator i = body->child_begin(), e = body->child_end();
+         i != e; ++i) {
+      Stmt *currStmt = *i;
+      children.emplace_back(*i);
+    }
+    ddmin(children);
+  }
+
   // const Expr *Cond = TheIfStmt->getCond();
   // TransAssert(Cond && "Bad Cond Expr!");
   // std::string CondStr;
@@ -215,4 +210,4 @@ void GlobalReduction::globalReduction(void) {
   //}
 }
 
-GlobalReduction::~GlobalReduction(void) { delete CollectionVisitor; }
+LocalReduction::~LocalReduction(void) { delete CollectionVisitor; }

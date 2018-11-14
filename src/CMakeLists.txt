@@ -16,6 +16,7 @@ set(CHISEL_SRC
         core/TransformationManager.cc
         core/Transformation.cc
         core/GlobalReduction.cc
+        core/LocalReduction.cc
         utils/RewriteUtils.cc
         utils/Options.cc
         utils/Report.cc

@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
   //    stat();
   //  mkdir(Option::outputDir.c_str(), ACCESSPERMS);
 
-  Option::inputFile = "conditional.c";
+  Option::inputFile = "mkdir-5.2.1.c";
   Option::oracleFile = "./test.sh";
 
   if (Option::profile)
