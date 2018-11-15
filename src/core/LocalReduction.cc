@@ -42,36 +42,6 @@ bool LocalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   return true;
 }
 
-/*bool GlobalReductionCollectionVisitor::VisitVarDecl(VarDecl *VD) {
-  if (VD->hasGlobalStorage()) {
-    if (Option::verbose)
-      llvm::outs() << "var decl " << VD->getNameAsString() << "\n";
-    ConsumerInstance->decls.emplace_back(VD);
-  }
-  return true;
-}
-
-bool GlobalReductionCollectionVisitor::VisitRecordDecl(RecordDecl *RD) {
-  ConsumerInstance->decls.emplace_back(RD);
-  if (Option::verbose)
-    llvm::outs() << "record decl " << RD->getNameAsString() << "\n";
-  return true;
-}
-
-bool GlobalReductionCollectionVisitor::VisitTypedefDecl(TypedefDecl *TD) {
-  if (Option::verbose)
-    llvm::outs() << "typedef decl " << TD->getNameAsString() << "\n";
-  ConsumerInstance->decls.emplace_back(TD);
-  return true;
-}
-
-bool GlobalReductionCollectionVisitor::VisitEnumDecl(EnumDecl *ED) {
-  if (Option::verbose)
-    llvm::outs() << "enum decl " << ED->getNameAsString() << "\n";
-  ConsumerInstance->decls.emplace_back(ED);
-  return true;
-}*/
-
 void LocalReduction::Initialize(ASTContext &context) {
   Transformation::Initialize(context);
   CollectionVisitor = new LocalReductionCollectionVisitor(this);
@@ -97,17 +67,25 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
     SourceLocation start = d->getSourceRange().getBegin();
     SourceLocation end;
 
+    llvm::outs() << "++++++++++++++++++++++++++++++++++++++++++";
+
     if (CompoundStmt *CS = dyn_cast<CompoundStmt>(d)) {
       end = CS->getSourceRange().getEnd().getLocWithOffset(1);
     } else if (IfStmt *IS = dyn_cast<IfStmt>(d)) {
       end = IS->getSourceRange().getEnd().getLocWithOffset(1);
     } else if (WhileStmt *WS = dyn_cast<WhileStmt>(d)) {
       end = WS->getSourceRange().getEnd().getLocWithOffset(1);
+    } else if (DeclStmt *DS = dyn_cast<DeclStmt>(d)) {
+      end = DS->getSourceRange().getEnd().getLocWithOffset(1);
     } else {
       end = RewriteHelper->getEndLocationUntil(d->getSourceRange(), ';')
                 .getLocWithOffset(1);
     }
     totalEnd = end;
+    llvm::StringRef ref2 = Lexer::getSourceText(
+        CharSourceRange::getCharRange(SourceRange(totalStart, totalEnd)), *SM,
+        LangOptions());
+    llvm::outs() << ref2 << "++++++++++++++++++++++++++++++++++++++";
   }
   llvm::StringRef ref = Lexer::getSourceText(
       CharSourceRange::getCharRange(SourceRange(totalStart, totalEnd)), *SM,
@@ -122,14 +100,14 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
     else
       replacement += chr;
   }
-
+  llvm::outs() << revert << "=====================\n";
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), replacement);
   // auto buffer = TheRewriter.getRewriteBufferFor(
   //   Context->getSourceManager().getMainFileID());
   // if (buffer != nullptr)
-  // buffer->write(llvm::outs());
+  //   buffer->write(llvm::outs());
   std::error_code error_code;
-  llvm::raw_fd_ostream outFile("mkdir-5.2.1.c", error_code,
+  llvm::raw_fd_ostream outFile("conditional.c", error_code,
                                llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
       .write(outFile);
@@ -140,7 +118,7 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
     llvm::outs() << "******** REVERT *********\n";
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     std::error_code error_code2;
-    llvm::raw_fd_ostream outFile2("mkdir-5.2.1.c", error_code2,
+    llvm::raw_fd_ostream outFile2("conditional.c", error_code2,
                                   llvm::sys::fs::F_None);
     TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
         .write(outFile2);
@@ -149,7 +127,7 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
   }
 }
 
-void LocalReduction::ddmin(std::vector<clang::Stmt *> &stmts) {
+void LocalReduction::ddmin(std::vector<clang::Stmt *> stmts) {
   std::vector<Stmt *> stmts_;
   stmts_ = std::move(stmts);
   int n = 2;
@@ -180,34 +158,58 @@ void LocalReduction::ddmin(std::vector<clang::Stmt *> &stmts) {
   }
 }
 
+std::vector<Stmt *> &LocalReduction::getImmediateChildren(clang::Stmt *s) {
+  std::vector<Stmt *> children;
+  for (Stmt::child_iterator i = s->child_begin(), e = s->child_end(); i != e;
+       ++i) {
+    Stmt *currStmt = *i;
+    children.emplace_back(currStmt);
+  }
+  return children;
+}
+
+std::vector<Stmt *> LocalReduction::getBodyStatements(clang::CompoundStmt *s) {
+  std::vector<Stmt *> stmts;
+  for (clang::CompoundStmt::body_iterator i = s->body_begin(),
+                                          e = s->body_end();
+       i != e; ++i) {
+    Stmt *currStmt = *i;
+    stmts.emplace_back(currStmt);
+  }
+  return stmts;
+}
+
+void LocalReduction::hdd(Stmt *s) {
+  if (IfStmt *IS = dyn_cast<IfStmt>(s)) {
+    llvm::outs() << "if stmt\n";
+    q.push(IS->getThen());
+    q.push(IS->getElse());
+  } else if (WhileStmt *WS = dyn_cast<WhileStmt>(s)) {
+    llvm::outs() << "while stmt\n";
+    q.push(WS->getBody());
+  } else if (CompoundStmt *CS = dyn_cast<CompoundStmt>(s)) {
+    llvm::outs() << "compound stmt\n";
+    auto stmts = getBodyStatements(CS);
+    for (auto stmt : stmts)
+      q.push(stmt);
+    ddmin(stmts);
+  } else {
+    llvm::outs() << "otherwise\n";
+  }
+}
+
 void LocalReduction::localReduction(void) {
   for (auto const &body : functionBodies) {
-    // hdd(body);
-    llvm::outs() << "DDMIN ON FUNCTION!\n";
-    std::vector<Stmt *> children;
-    for (Stmt::child_iterator i = body->child_begin(), e = body->child_end();
-         i != e; ++i) {
-      Stmt *currStmt = *i;
-      children.emplace_back(*i);
+    llvm::outs() << "FUNCTION BODY..\n";
+    q.push(body);
+    llvm::outs() << "pushed to queue\n";
+    while (!q.empty()) {
+      Stmt *s = q.front();
+      q.pop();
+      llvm::outs() << "popped!\n";
+      hdd(s);
     }
-    ddmin(children);
   }
-
-  // const Expr *Cond = TheIfStmt->getCond();
-  // TransAssert(Cond && "Bad Cond Expr!");
-  // std::string CondStr;
-  // RewriteHelper->getExprString(Cond, CondStr);
-  // CondStr += ";";
-  // RewriteHelper->addStringBeforeStmt(TheIfStmt, CondStr, NeedParen);
-
-  // RewriteHelper->removeIfAndCond(TheIfStmt);
-
-  // const Stmt *ElseS = TheIfStmt->getElse();
-  // if (ElseS) {
-  //  SourceLocation ElseLoc = TheIfStmt->getElseLoc();
-  //  std::string ElseStr = "else";
-  //  TheRewriter.RemoveText(ElseLoc, ElseStr.size());
-  //}
 }
 
 LocalReduction::~LocalReduction(void) { delete CollectionVisitor; }

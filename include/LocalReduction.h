@@ -2,6 +2,8 @@
 #define LOCAL_REDUCTION_H
 
 #include "Transformation.h"
+#include <iterator>
+#include <queue>
 #include <string>
 
 namespace clang {
@@ -26,7 +28,10 @@ private:
   virtual bool HandleTopLevelDecl(clang::DeclGroupRef D);
   virtual void HandleTranslationUnit(clang::ASTContext &Ctx);
   void localReduction(void);
-  void ddmin(std::vector<clang::Stmt *> &decls);
+  std::vector<clang::Stmt *> &getImmediateChildren(clang::Stmt *s);
+  std::vector<clang::Stmt *> getBodyStatements(clang::CompoundStmt *s);
+  void hdd(clang::Stmt *s);
+  void ddmin(std::vector<clang::Stmt *> stmts);
   bool test(std::vector<clang::Stmt *> &toBeRemoved);
   LocalReductionCollectionVisitor *CollectionVisitor;
 
@@ -35,5 +40,6 @@ private:
   void operator=(const LocalReduction &);
 
   std::vector<clang::Stmt *> functionBodies;
+  std::queue<clang::Stmt *> q;
 };
 #endif
