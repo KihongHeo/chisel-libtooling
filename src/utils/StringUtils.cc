@@ -34,3 +34,16 @@ std::string StringUtils::replaceLast(std::string &s,
 bool StringUtils::contains(std::string str, std::string what) {
   return (str.find(what) != std::string::npos);
 }
+
+std::string StringUtils::placeholder(std::string str) {
+  std::string replacement = "";
+  for (auto const &chr : str) {
+    if (chr == '\n')
+      replacement += '\n';
+    else if (isprint(chr))
+      replacement += " ";
+    else
+      replacement += chr;
+  }
+  return replacement;
+}

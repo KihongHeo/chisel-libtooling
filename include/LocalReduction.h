@@ -33,7 +33,12 @@ private:
   void hdd(clang::Stmt *s);
   void ddmin(std::vector<clang::Stmt *> stmts);
   bool test(std::vector<clang::Stmt *> &toBeRemoved);
+  bool testEmpty();
   LocalReductionCollectionVisitor *CollectionVisitor;
+
+  void reduceIf(clang::IfStmt *IS);
+  void reduceWhile(clang::WhileStmt* WS);
+  void reduceCompound(clang::CompoundStmt* CS);
 
   LocalReduction(void);
   LocalReduction(const LocalReduction &);
@@ -41,5 +46,6 @@ private:
 
   std::vector<clang::Stmt *> functionBodies;
   std::queue<clang::Stmt *> q;
+  std::vector<clang::SourceRange*> removedRanges;
 };
 #endif

@@ -989,4 +989,19 @@ bool Transformation::isInIncludedFile(const Stmt *S) const {
   return isInIncludedFile(S->getLocStart());
 }
 
+std::string Transformation::getSourceText(SourceRange SR) {
+  const SourceManager *SM = &Context->getSourceManager();
+  llvm::StringRef ref = Lexer::getSourceText(CharSourceRange::getCharRange(SR), *SM, LangOptions());
+  return ref.str();
+}
+
+void Transformation::writeToFile(std::string filename) {
+    std::error_code error_code;
+    llvm::raw_fd_ostream outFile(filename.c_str(), error_code,
+                                  llvm::sys::fs::F_None);
+    TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
+        .write(outFile);
+    outFile.close();
+}
+
 Transformation::~Transformation(void) { RewriteUtils::Finalize(); }

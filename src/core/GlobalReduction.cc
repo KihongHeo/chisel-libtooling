@@ -146,7 +146,7 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   // if (buffer != nullptr)
   //  buffer->write(llvm::outs());
   std::error_code error_code;
-  llvm::raw_fd_ostream outFile("mkdir-5.2.1.c", error_code,
+  llvm::raw_fd_ostream outFile(Option::inputFile.c_str(), error_code,
                                llvm::sys::fs::F_None);
   TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
       .write(outFile);
@@ -156,7 +156,7 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   } else {
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     std::error_code error_code2;
-    llvm::raw_fd_ostream outFile2("mkdir-5.2.1.c", error_code2,
+    llvm::raw_fd_ostream outFile2(Option::inputFile.c_str(), error_code2,
                                   llvm::sys::fs::F_None);
     TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
         .write(outFile2);

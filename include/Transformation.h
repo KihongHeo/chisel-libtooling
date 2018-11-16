@@ -5,6 +5,7 @@
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "clang/Basic/SourceLocation.h"
 #include <cassert>
 #include <cstdlib>
 #include <string>
@@ -32,6 +33,7 @@ class TemplateArgument;
 class TemplateTypeParmType;
 class DependentNameType;
 class QualType;
+class SourceRange;
 } // namespace clang
 
 typedef enum {
@@ -264,6 +266,10 @@ protected:
   bool CheckReference;
 
   std::string ReferenceValue;
+
+  std::string getSourceText(clang::SourceRange SR);
+
+  void writeToFile(std::string filename);
 };
 
 class TransNameQueryVisitor;

@@ -9,4 +9,5 @@ public:
   static std::string replaceLast(std::string &s, const std::string &toReplace,
                                  const std::string &replaceWith);
   static bool contains(std::string str, std::string what);
+  static std::string placeholder(std::string str);
 };
