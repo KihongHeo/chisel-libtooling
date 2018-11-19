@@ -28,6 +28,7 @@ public:
       : ConsumerInstance(Instance) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD);
+  void clearFunctionBodies() { ConsumerInstance->functionBodies.clear(); }
 
 private:
   LocalReduction *ConsumerInstance;
@@ -48,6 +49,7 @@ bool LocalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 void LocalReduction::Initialize(ASTContext &context) {
   Transformation::Initialize(context);
   CollectionVisitor = new LocalReductionCollectionVisitor(this);
+  CollectionVisitor->clearFunctionBodies();
 }
 
 bool LocalReduction::HandleTopLevelDecl(DeclGroupRef D) {
@@ -95,8 +97,7 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
               .getLocWithOffset(1);
     }
   } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(last)) {
-    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(),
-                                                  ';'); //.getLocWithOffset(1);
+    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(), ';');
   } else if (ReturnStmt *RS = dyn_cast<ReturnStmt>(last)) {
     totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
                    .getLocWithOffset(1);
@@ -110,8 +111,7 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
     totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
                    .getLocWithOffset(1);
   } else if (DeclStmt *DS = dyn_cast<DeclStmt>(last)) {
-    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(),
-                                                  ';'); //.getLocWithOffset(1);
+    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(), ';');
   } else if (CallExpr *CE = dyn_cast<CallExpr>(last)) {
     totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
                    .getLocWithOffset(1);
@@ -134,14 +134,16 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
 
   i++;
   if (system(Option::oracleFile.c_str()) == 0) {
-    Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
-                                "." + std::to_string(i) + "." + kind +
-                                ".success.c");
+    if (Option::saveTemp)
+      Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
+                                  "." + std::to_string(i) + "." + kind +
+                                  ".success.c");
     return true;
   } else {
-    Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
-                                "." + std::to_string(i) + "." + kind +
-                                ".fail.c");
+    if (Option::saveTemp)
+      Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
+                                  "." + std::to_string(i) + "." + kind +
+                                  ".fail.c");
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     Transformation::writeToFile(Option::inputFile);
     return false;
@@ -210,7 +212,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
 
   Stmt *Then = IS->getThen();
   Stmt *Else = IS->getElse();
-  /*if (Else) {
+  if (Else) {
     elseLoc = IS->getElseLoc();
   }
 
@@ -240,9 +242,10 @@ void LocalReduction::reduceIf(IfStmt *IS) {
                               StringUtils::placeholder(ifAndThen));
       std::string elseWord = Transformation::getSourceText(
           SourceRange(elseLoc, elseLoc.getLocWithOffset(4)));
-      TheRewriter.ReplaceText(SourceRange(elseLoc, elseLoc.getLocWithOffset(4)),
-                              StringUtils::placeholder(Transformation::getSourceText(SourceRange(elseLoc,
-  elseLoc.getLocWithOffset(4)))));
+      TheRewriter.ReplaceText(
+          SourceRange(elseLoc, elseLoc.getLocWithOffset(4)),
+          StringUtils::placeholder(Transformation::getSourceText(
+              SourceRange(elseLoc, elseLoc.getLocWithOffset(4)))));
       Transformation::writeToFile(Option::inputFile);
       if (testEmpty()) { // successfully remove then branch
         q.push(Else);
@@ -267,10 +270,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
       Transformation::writeToFile(Option::inputFile);
       q.push(Then);
     }
-  }*/
-  q.push(Then);
-  if (Else)
-    q.push(Else);
+  }
 }
 
 void LocalReduction::reduceWhile(WhileStmt *WS) { q.push(WS->getBody()); }

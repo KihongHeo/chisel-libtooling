@@ -28,6 +28,7 @@ void stat() {
 
 int main(int argc, char **argv) {
   Option::handleOptions(argc, argv);
+
   if (Option::stat)
     stat();
   mkdir(Option::outputDir.c_str(), ACCESSPERMS);
@@ -36,19 +37,25 @@ int main(int argc, char **argv) {
     Report::totalProfiler.startTimer();
 
   TransMgr = TransformationManager::GetInstance();
-
   TransMgr->setSrcFileName(Option::inputFile);
 
-  for (int i = 0; i < 1; i++) {
+  int wc = 0, wc0 = 0;
+  //	while (true) {
+  wc0 = Stats::getWordCount(Option::inputFile.c_str());
+  if (!Option::skipGlobal) {
     TransMgr->setTransformation("global-reduction");
     TransMgr->initializeCompilerInstance(ErrorMsg);
     TransMgr->doTransformation(ErrorMsg, ErrorCode);
   }
-  for (int i = 0; i < 1; i++) {
+  if (!Option::skipLocal) {
     TransMgr->setTransformation("local-reduction");
     TransMgr->initializeCompilerInstance(ErrorMsg);
     TransMgr->doTransformation(ErrorMsg, ErrorCode);
   }
+  wc = Stats::getWordCount(Option::inputFile.c_str());
+  //	  if (wc == wc0)
+  //			break;
+  //	}
 
   if (Option::profile)
     Report::totalProfiler.stopTimer();

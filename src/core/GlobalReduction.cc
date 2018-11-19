@@ -31,6 +31,8 @@ public:
   bool VisitTypedefDecl(TypedefDecl *TD);
   bool VisitEnumDecl(EnumDecl *ED);
 
+  void clearDecls() { ConsumerInstance->decls.clear(); }
+
 private:
   GlobalReduction *ConsumerInstance;
 };
@@ -78,6 +80,7 @@ bool GlobalReductionCollectionVisitor::VisitEnumDecl(EnumDecl *ED) {
 void GlobalReduction::Initialize(ASTContext &context) {
   Transformation::Initialize(context);
   CollectionVisitor = new GlobalReductionCollectionVisitor(this);
+  CollectionVisitor->clearDecls();
 }
 
 bool GlobalReduction::HandleTopLevelDecl(DeclGroupRef D) {
