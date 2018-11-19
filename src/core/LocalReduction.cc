@@ -123,9 +123,9 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
   }
 
   kind += "-" + std::to_string(toBeRemoved.size());
-  totalStart.dump(*SM);
-  totalEnd.dump(*SM);
-  llvm::errs() << "\n";
+  //totalStart.dump(*SM);
+  //totalEnd.dump(*SM);
+  //llvm::errs() << "\n";
   std::string revert =
       Transformation::getSourceText(SourceRange(totalStart, totalEnd));
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd),
@@ -216,7 +216,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
     elseLoc = IS->getElseLoc();
   }
 
-  std::string revertIf =
+  /*std::string revertIf =
       Transformation::getSourceText(SourceRange(beginIf, endIf));
 
   if (Else) { // then, else
@@ -270,7 +270,10 @@ void LocalReduction::reduceIf(IfStmt *IS) {
       Transformation::writeToFile(Option::inputFile);
       q.push(Then);
     }
-  }
+  }*/
+	q.push(Then);
+	if (Else)
+		q.push(Else);
 }
 
 void LocalReduction::reduceWhile(WhileStmt *WS) { q.push(WS->getBody()); }
@@ -306,9 +309,8 @@ void LocalReduction::hdd(Stmt *s) {
   } else if (LabelStmt *LS = dyn_cast<LabelStmt>(s)) {
     if (Option::verbose)
       llvm::outs() << "hdd: label\n";
-    // reduceLabel(LS);
+    reduceLabel(LS);
   } else {
-    llvm::outs() << "HDD: " << s->getStmtClassName() << "\n";
     return;
     // TODO add other cases: For, Do, Switch...
   }
