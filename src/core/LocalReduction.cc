@@ -11,11 +11,13 @@
 #include "LocalReduction.h"
 #include "Options.h"
 #include "RewriteUtils.h"
+#include "StringUtils.h"
 #include "TransformationManager.h"
 #include "VectorUtils.h"
-#include "StringUtils.h"
 
 using namespace clang;
+
+int i = 0;
 
 static const char *DescriptionMsg = "Perform local-level reduction";
 
@@ -66,35 +68,80 @@ bool LocalReduction::testEmpty() {
 }
 
 bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
+  std::string cmd = "cp " + Option::inputFile + " best_now.c";
+  system(cmd.c_str());
+
   const SourceManager *SM = &Context->getSourceManager();
-  std::string revert = "";
   SourceLocation totalStart, totalEnd;
   totalStart = toBeRemoved.front()->getSourceRange().getBegin();
-  
-  Stmt* last = toBeRemoved.back();
-    if (CompoundStmt *CS = dyn_cast<CompoundStmt>(last)) {
-      totalEnd = CS->getSourceRange().getEnd().getLocWithOffset(1);
-    } else if (IfStmt *IS = dyn_cast<IfStmt>(last)) {
-      totalEnd = IS->getSourceRange().getEnd().getLocWithOffset(1);
-    } else if (WhileStmt *WS = dyn_cast<WhileStmt>(last)) {
-      totalEnd = WS->getSourceRange().getEnd().getLocWithOffset(1);
-    } else if (DeclStmt *DS = dyn_cast<DeclStmt>(last)) {
-      totalEnd = DS->getSourceRange().getEnd().getLocWithOffset(1);
+  Stmt *last = toBeRemoved.back();
+
+  std::string kind(last->getStmtClassName());
+  llvm::outs() << "STMT KIND = " << kind << "\n";
+
+  if (CompoundStmt *CS = dyn_cast<CompoundStmt>(last)) {
+    totalEnd = last->getSourceRange().getEnd().getLocWithOffset(1);
+  } else if (IfStmt *IS = dyn_cast<IfStmt>(last)) {
+    totalEnd = last->getSourceRange().getEnd().getLocWithOffset(1);
+  } else if (WhileStmt *WS = dyn_cast<WhileStmt>(last)) {
+    totalEnd = last->getSourceRange().getEnd().getLocWithOffset(1);
+  } else if (LabelStmt *LS = dyn_cast<LabelStmt>(last)) {
+    auto subStmt = LS->getSubStmt();
+    if (CompoundStmt *LS_CS = dyn_cast<CompoundStmt>(subStmt)) {
+      totalEnd = subStmt->getSourceRange().getEnd().getLocWithOffset(1);
     } else {
-      totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
-                .getLocWithOffset(1);
+      totalEnd =
+          RewriteHelper->getEndLocationUntil(subStmt->getSourceRange(), ';')
+              .getLocWithOffset(1);
     }
-  revert = Transformation::getSourceText(SourceRange(totalStart, totalEnd));
-  TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), StringUtils::placeholder(revert));
-   //auto buffer = TheRewriter.getRewriteBufferFor(
-   // Context->getSourceManager().getMainFileID());
-   //if (buffer != nullptr)
-   //  buffer->write(llvm::outs());
-   //llvm::outs() << "===========================\n";
-   Transformation::writeToFile(Option::inputFile);
+  } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(last)) {
+    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(),
+                                                  ';'); //.getLocWithOffset(1);
+  } else if (ReturnStmt *RS = dyn_cast<ReturnStmt>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else if (GotoStmt *GS = dyn_cast<GotoStmt>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else if (BreakStmt *BS = dyn_cast<BreakStmt>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else if (ContinueStmt *CS = dyn_cast<ContinueStmt>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else if (DeclStmt *DS = dyn_cast<DeclStmt>(last)) {
+    totalEnd = RewriteHelper->getEndLocationAfter(last->getSourceRange(),
+                                                  ';'); //.getLocWithOffset(1);
+  } else if (CallExpr *CE = dyn_cast<CallExpr>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(last)) {
+    totalEnd = RewriteHelper->getEndLocationUntil(last->getSourceRange(), ';')
+                   .getLocWithOffset(1);
+  } else {
+    return false;
+  }
+
+  kind += "-" + std::to_string(toBeRemoved.size());
+  totalStart.dump(*SM);
+  totalEnd.dump(*SM);
+  llvm::errs() << "\n";
+  std::string revert =
+      Transformation::getSourceText(SourceRange(totalStart, totalEnd));
+  TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd),
+                          StringUtils::placeholder(revert));
+  Transformation::writeToFile(Option::inputFile);
+
+  i++;
   if (system(Option::oracleFile.c_str()) == 0) {
+    Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
+                                "." + std::to_string(i) + "." + kind +
+                                ".success.c");
     return true;
   } else {
+    Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
+                                "." + std::to_string(i) + "." + kind +
+                                ".fail.c");
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     Transformation::writeToFile(Option::inputFile);
     return false;
@@ -153,66 +200,80 @@ std::vector<Stmt *> LocalReduction::getBodyStatements(clang::CompoundStmt *s) {
   return stmts;
 }
 
-void LocalReduction::reduceIf(IfStmt* IS) {
+void LocalReduction::reduceIf(IfStmt *IS) {
   // remove else branch
   SourceLocation beginIf = IS->getIfLoc();
-  llvm::outs() << "BEGIN IF:";
-  beginIf.dump(Context->getSourceManager());
-  llvm::outs() << "\n";
-  SourceLocation endIf = IS->getLocEnd();
-  llvm::outs() << "END IF:";
-  endIf.dump(Context->getSourceManager());
-  llvm::outs() << "\n";
-  llvm::outs() << "END COND: ";
+  SourceLocation endIf = IS->getSourceRange().getEnd().getLocWithOffset(1);
   SourceLocation endCond = IS->getThen()->getLocStart().getLocWithOffset(-1);
-  endCond.dump(Context->getSourceManager());
-  llvm::outs() << "\n";
   SourceLocation endThen = IS->getThen()->getLocEnd();
-  std::string revertIf = Transformation::getSourceText(IS->getSourceRange());
-  
-  std::string ifAndCond = Transformation::getSourceText(SourceRange(beginIf, endCond));
-  TheRewriter.ReplaceText(SourceRange(beginIf, endCond), StringUtils::placeholder(ifAndCond));
-
-  const Stmt *Else = IS->getElse();
   SourceLocation elseLoc;
-  if (Else) {
+
+  Stmt *Then = IS->getThen();
+  Stmt *Else = IS->getElse();
+  /*if (Else) {
     elseLoc = IS->getElseLoc();
-    std::string elsePart = Transformation::getSourceText(SourceRange(elseLoc, endIf));
-    TheRewriter.ReplaceText(SourceRange(elseLoc, endIf), StringUtils::placeholder(elsePart));
   }
 
-  Transformation::writeToFile(Option::inputFile);
-  if (testEmpty()) {
-    q.push(IS->getThen());
-  } else {
-    // revert
-    TheRewriter.ReplaceText(SourceRange(beginIf, endIf), StringUtils::placeholder(revertIf));
+  std::string revertIf =
+      Transformation::getSourceText(SourceRange(beginIf, endIf));
+
+  if (Else) { // then, else
+    // remove else branch
+    std::string ifAndCond =
+        Transformation::getSourceText(SourceRange(beginIf, endCond));
+    TheRewriter.ReplaceText(SourceRange(beginIf, endCond),
+                            StringUtils::placeholder(ifAndCond));
+    std::string elsePart =
+        Transformation::getSourceText(SourceRange(elseLoc, endIf));
+    TheRewriter.ReplaceText(SourceRange(elseLoc, endIf),
+                            StringUtils::placeholder(elsePart));
     Transformation::writeToFile(Option::inputFile);
-    // try removing then branch
-    std::string thenPart = Transformation::getSourceText(SourceRange(beginIf, endThen));
-    TheRewriter.ReplaceText(SourceRange(beginIf), StringUtils::placeholder(thenPart));
-    
-    if (Else)
-      TheRewriter.ReplaceText(elseLoc, 4, "    "); // len("else") = 4
-      
+    if (testEmpty()) { // successfully remove else branch
+      q.push(Then);
+    } else { // revert else branch removal
+      TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
+      Transformation::writeToFile(Option::inputFile);
+      // remove then branch
+      std::string ifAndThen =
+          Transformation::getSourceText(SourceRange(beginIf, endThen));
+      TheRewriter.ReplaceText(SourceRange(beginIf, endThen),
+                              StringUtils::placeholder(ifAndThen));
+      std::string elseWord = Transformation::getSourceText(
+          SourceRange(elseLoc, elseLoc.getLocWithOffset(4)));
+      TheRewriter.ReplaceText(SourceRange(elseLoc, elseLoc.getLocWithOffset(4)),
+                              StringUtils::placeholder(Transformation::getSourceText(SourceRange(elseLoc,
+  elseLoc.getLocWithOffset(4)))));
+      Transformation::writeToFile(Option::inputFile);
+      if (testEmpty()) { // successfully remove then branch
+        q.push(Else);
+      } else { // revert then branch removal
+        TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
+        Transformation::writeToFile(Option::inputFile);
+        q.push(Then);
+        q.push(Else);
+      }
+    }
+  } else { // then
+    // remove condition
+    std::string ifAndThen =
+        Transformation::getSourceText(SourceRange(beginIf, endThen));
+    TheRewriter.ReplaceText(SourceRange(beginIf, endThen),
+                            StringUtils::placeholder(ifAndThen));
     Transformation::writeToFile(Option::inputFile);
     if (testEmpty()) {
-      if (Else)
-        q.push(IS->getElse());
+      q.push(Then);
     } else {
-      // revert
-      TheRewriter.ReplaceText(SourceRange(beginIf, endIf), StringUtils::placeholder(revertIf));
+      TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
       Transformation::writeToFile(Option::inputFile);
-      q.push(IS->getThen());
-      if (Else)
-        q.push(IS->getElse());
+      q.push(Then);
     }
-  }
+  }*/
+  q.push(Then);
+  if (Else)
+    q.push(Else);
 }
 
-void LocalReduction::reduceWhile(WhileStmt *WS) {
-  q.push(WS->getBody());
-}
+void LocalReduction::reduceWhile(WhileStmt *WS) { q.push(WS->getBody()); }
 
 void LocalReduction::reduceCompound(CompoundStmt *CS) {
   auto stmts = getBodyStatements(CS);
@@ -221,15 +282,35 @@ void LocalReduction::reduceCompound(CompoundStmt *CS) {
   ddmin(stmts);
 }
 
+void LocalReduction::reduceLabel(LabelStmt *LS) {
+  if (CompoundStmt *CS = dyn_cast<CompoundStmt>(LS->getSubStmt())) {
+    q.push(CS);
+  }
+}
+
 void LocalReduction::hdd(Stmt *s) {
   if (s == NULL)
     return;
   if (IfStmt *IS = dyn_cast<IfStmt>(s)) {
+    if (Option::verbose)
+      llvm::outs() << "hhd: if\n";
     reduceIf(IS);
   } else if (WhileStmt *WS = dyn_cast<WhileStmt>(s)) {
+    if (Option::verbose)
+      llvm::outs() << "hdd: while\n";
     reduceWhile(WS);
   } else if (CompoundStmt *CS = dyn_cast<CompoundStmt>(s)) {
-    reduceCompound(CS); 
+    if (Option::verbose)
+      llvm::outs() << "hdd: compound\n";
+    reduceCompound(CS);
+  } else if (LabelStmt *LS = dyn_cast<LabelStmt>(s)) {
+    if (Option::verbose)
+      llvm::outs() << "hdd: label\n";
+    // reduceLabel(LS);
+  } else {
+    llvm::outs() << "HDD: " << s->getStmtClassName() << "\n";
+    return;
+    // TODO add other cases: For, Do, Switch...
   }
 }
 

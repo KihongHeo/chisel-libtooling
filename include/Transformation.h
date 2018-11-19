@@ -3,9 +3,9 @@
 
 #include "RewriteUtils.h"
 #include "clang/AST/ASTConsumer.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "llvm/ADT/SmallPtrSet.h"
-#include "clang/Basic/SourceLocation.h"
 #include <cassert>
 #include <cstdlib>
 #include <string>
@@ -270,6 +270,8 @@ protected:
   std::string getSourceText(clang::SourceRange SR);
 
   void writeToFile(std::string filename);
+
+  void printToTerminal();
 };
 
 class TransNameQueryVisitor;

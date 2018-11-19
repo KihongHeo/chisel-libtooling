@@ -16,7 +16,6 @@
 
 using namespace clang;
 
-
 int TransformationManager::ErrorInvalidCounter = 1;
 
 TransformationManager *TransformationManager::Instance;
@@ -39,30 +38,12 @@ Preprocessor &TransformationManager::getPreprocessor() {
   return GetInstance()->ClangInstance->getPreprocessor();
 }
 
-/*bool TransformationManager::isCXXLangOpt()
-{
-  TransAssert(TransformationManager::Instance && "Invalid Instance!");
-  TransAssert(TransformationManager::Instance->ClangInstance &&
-              "Invalid ClangInstance!");
-  return (TransformationManager::Instance->ClangInstance->getLangOpts()
-          .CPlusPlus);
-}*/
-
 bool TransformationManager::isCLangOpt() {
   TransAssert(TransformationManager::Instance && "Invalid Instance!");
   TransAssert(TransformationManager::Instance->ClangInstance &&
               "Invalid ClangInstance!");
   return (TransformationManager::Instance->ClangInstance->getLangOpts().C99);
 }
-
-/*bool TransformationManager::isOpenCLLangOpt()
-{
-  TransAssert(TransformationManager::Instance && "Invalid Instance!");
-  TransAssert(TransformationManager::Instance->ClangInstance &&
-              "Invalid ClangInstance!");
-  return (TransformationManager::Instance->ClangInstance->getLangOpts()
-          .OpenCL);
-}*/
 
 bool TransformationManager::initializeCompilerInstance(std::string &ErrorMsg) {
   /*if (ClangInstance) {
@@ -180,13 +161,13 @@ bool TransformationManager::doTransformation(std::string &ErrorMsg,
     return true;
   }
 
-  llvm::raw_ostream *OutStream = getOutStream();
+  // llvm::raw_ostream *OutStream = getOutStream();
   bool RV;
   if (CurrentTransformationImpl->transSuccess()) {
-    CurrentTransformationImpl->outputTransformedSource(*OutStream);
+    // CurrentTransformationImpl->outputTransformedSource(*OutStream);
     RV = true;
   } else if (CurrentTransformationImpl->transInternalError()) {
-    CurrentTransformationImpl->outputOriginalSource(*OutStream);
+    // CurrentTransformationImpl->outputOriginalSource(*OutStream);
     RV = true;
   } else {
     CurrentTransformationImpl->getTransErrorMsg(ErrorMsg);
@@ -194,7 +175,7 @@ bool TransformationManager::doTransformation(std::string &ErrorMsg,
       ErrorCode = ErrorInvalidCounter;
     RV = false;
   }
-  closeOutStream(OutStream);
+  // closeOutStream(OutStream);
   return RV;
 }
 
@@ -206,12 +187,6 @@ bool TransformationManager::verify(std::string &ErrorMsg, int &ErrorCode) {
 
   if (CurrentTransformationImpl->skipCounter())
     return true;
-
-  /*if (TransformationCounter <= 0) {
-    ErrorMsg = "Invalid transformation counter!";
-    ErrorCode = ErrorInvalidCounter;
-    return false;
-  }*/
 
   if ((ToCounter > 0) && (ToCounter < TransformationCounter)) {
     ErrorMsg = "to-counter value cannot be smaller than counter value!";
@@ -264,8 +239,8 @@ void TransformationManager::outputNumTransformationInstances() {
 TransformationManager::TransformationManager()
     : CurrentTransformationImpl(NULL), TransformationCounter(-1), ToCounter(-1),
       SrcFileName(""), OutputFileName(""), CurrentTransName(""),
-      ClangInstance(NULL), QueryInstanceOnly(false)/*, DoReplacement(false),*/
-      /*Replacement(""), CheckReference(false), ReferenceValue("")*/ {
+      ClangInstance(NULL), QueryInstanceOnly(false) /*, DoReplacement(false),*/
+/*Replacement(""), CheckReference(false), ReferenceValue("")*/ {
   // Nothing to do
 }
 

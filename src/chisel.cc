@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   if (Option::stat)
     stat();
   mkdir(Option::outputDir.c_str(), ACCESSPERMS);
- 
+
   if (Option::profile)
     Report::totalProfiler.startTimer();
 
@@ -39,13 +39,12 @@ int main(int argc, char **argv) {
 
   TransMgr->setSrcFileName(Option::inputFile);
 
-  
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 1; i++) {
     TransMgr->setTransformation("global-reduction");
     TransMgr->initializeCompilerInstance(ErrorMsg);
     TransMgr->doTransformation(ErrorMsg, ErrorCode);
   }
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 1; i++) {
     TransMgr->setTransformation("local-reduction");
     TransMgr->initializeCompilerInstance(ErrorMsg);
     TransMgr->doTransformation(ErrorMsg, ErrorCode);

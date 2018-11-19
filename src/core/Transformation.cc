@@ -991,17 +991,27 @@ bool Transformation::isInIncludedFile(const Stmt *S) const {
 
 std::string Transformation::getSourceText(SourceRange SR) {
   const SourceManager *SM = &Context->getSourceManager();
-  llvm::StringRef ref = Lexer::getSourceText(CharSourceRange::getCharRange(SR), *SM, LangOptions());
+  llvm::StringRef ref = Lexer::getSourceText(CharSourceRange::getCharRange(SR),
+                                             *SM, LangOptions());
   return ref.str();
 }
 
 void Transformation::writeToFile(std::string filename) {
-    std::error_code error_code;
-    llvm::raw_fd_ostream outFile(filename.c_str(), error_code,
-                                  llvm::sys::fs::F_None);
-    TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
-        .write(outFile);
-    outFile.close();
+  std::error_code error_code;
+  llvm::raw_fd_ostream outFile(filename.c_str(), error_code,
+                               llvm::sys::fs::F_None);
+  TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
+      .write(outFile);
+  outFile.close();
+}
+
+void Transformation::printToTerminal() {
+  llvm::outs() << "==========================";
+  auto buffer = TheRewriter.getRewriteBufferFor(
+      Context->getSourceManager().getMainFileID());
+  if (buffer != nullptr)
+    buffer->write(llvm::outs());
+  llvm::outs() << "=========================\n";
 }
 
 Transformation::~Transformation(void) { RewriteUtils::Finalize(); }

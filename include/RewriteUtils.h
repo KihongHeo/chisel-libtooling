@@ -241,6 +241,9 @@ public:
       const clang::NestedNameSpecifierLoc *QualLoc,
       const clang::CXXMethodDecl *MD, const std::string &NewName);
 
+  clang::SourceLocation getEndLocationAfter(clang::SourceRange Range,
+                                            char Symbol);
+
 private:
   static RewriteUtils *Instance;
 
@@ -258,8 +261,8 @@ private:
 
   int getSkippingOffset(const char *Buf, char Symbol);
 
-  clang::SourceLocation getEndLocationAfter(clang::SourceRange Range,
-                                            char Symbol);
+  //  clang::SourceLocation getEndLocationAfter(clang::SourceRange Range,
+  //                                            char Symbol);
 
   clang::SourceLocation getLocationAfterSkiping(clang::SourceLocation StartLoc,
                                                 char Symbol);

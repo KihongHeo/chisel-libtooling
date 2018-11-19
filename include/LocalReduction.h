@@ -37,8 +37,9 @@ private:
   LocalReductionCollectionVisitor *CollectionVisitor;
 
   void reduceIf(clang::IfStmt *IS);
-  void reduceWhile(clang::WhileStmt* WS);
-  void reduceCompound(clang::CompoundStmt* CS);
+  void reduceWhile(clang::WhileStmt *WS);
+  void reduceCompound(clang::CompoundStmt *CS);
+  void reduceLabel(clang::LabelStmt *LS);
 
   LocalReduction(void);
   LocalReduction(const LocalReduction &);
@@ -46,6 +47,6 @@ private:
 
   std::vector<clang::Stmt *> functionBodies;
   std::queue<clang::Stmt *> q;
-  std::vector<clang::SourceRange*> removedRanges;
+  std::vector<clang::SourceRange *> removedRanges;
 };
 #endif

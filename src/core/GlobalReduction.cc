@@ -11,6 +11,7 @@
 #include "GlobalReduction.h"
 #include "Options.h"
 #include "RewriteUtils.h"
+#include "StringUtils.h"
 #include "TransformationManager.h"
 #include "VectorUtils.h"
 
@@ -38,18 +39,9 @@ static RegisterTransformation<GlobalReduction> Trans("global-reduction",
                                                      DescriptionMsg);
 
 bool GlobalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  // if (Option::verbose)
-  llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
+  if (Option::verbose)
+    llvm::outs() << "function decl " << FD->getNameInfo().getAsString() << "\n";
   ConsumerInstance->decls.emplace_back(FD);
-  if (FD->isThisDeclarationADefinition()) {
-    /*auto body = FD->getBody();
-    ConsumerInstance->functionBodies.emplace_back(FD->getBody());
-    for (Stmt::child_iterator i = body->child_begin(), e = body->child_end(); i
-    != e; ++i) { Stmt* currStmt = *i; llvm::errs() << "***** a child\n";
-      currStmt->dump();
-    }*/
-    FD->dump();
-  }
   return true;
 }
 
@@ -99,14 +91,6 @@ void GlobalReduction::HandleTranslationUnit(ASTContext &Ctx) {
   globalReduction();
 }
 
-void GlobalReduction::prettyPrintSubset(std::vector<clang::Decl *> vec) {
-  for (auto const &d : vec) {
-    d->dump();
-    llvm::outs() << "===============\n";
-  }
-  llvm::outs() << "\n";
-}
-
 bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
   const SourceManager *SM = &Context->getSourceManager();
   std::string revert = "";
@@ -125,42 +109,18 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
     }
     totalEnd = end;
   }
-  llvm::StringRef ref = Lexer::getSourceText(
-      CharSourceRange::getCharRange(SourceRange(totalStart, totalEnd)), *SM,
-      LangOptions());
-  revert = ref.str();
+  revert = getSourceText(SourceRange(totalStart, totalEnd));
 
-  std::string replacement = "";
-  for (auto const &chr : revert) {
-    if (chr == '\n')
-      replacement += '\n';
-    else if (isprint(chr))
-      replacement += " ";
-    else
-      replacement += chr;
-  }
+  TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd),
+                          StringUtils::placeholder(revert));
+  Transformation::writeToFile(Option::inputFile);
 
-  TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), replacement);
-  // auto buffer = TheRewriter.getRewriteBufferFor(
-  //    Context->getSourceManager().getMainFileID());
-  // if (buffer != nullptr)
-  //  buffer->write(llvm::outs());
-  std::error_code error_code;
-  llvm::raw_fd_ostream outFile(Option::inputFile.c_str(), error_code,
-                               llvm::sys::fs::F_None);
-  TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
-      .write(outFile);
-  outFile.close();
   if (system(Option::oracleFile.c_str()) == 0) {
     return true;
   } else {
+    // revert
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
-    std::error_code error_code2;
-    llvm::raw_fd_ostream outFile2(Option::inputFile.c_str(), error_code2,
-                                  llvm::sys::fs::F_None);
-    TheRewriter.getEditBuffer(Context->getSourceManager().getMainFileID())
-        .write(outFile2);
-    outFile2.close();
+    Transformation::writeToFile(Option::inputFile);
     return false;
   }
 }
@@ -196,23 +156,6 @@ void GlobalReduction::ddmin(std::vector<clang::Decl *> &decls) {
   }
 }
 
-void GlobalReduction::globalReduction(void) {
-  ddmin(decls);
-  // const Expr *Cond = TheIfStmt->getCond();
-  // TransAssert(Cond && "Bad Cond Expr!");
-  // std::string CondStr;
-  // RewriteHelper->getExprString(Cond, CondStr);
-  // CondStr += ";";
-  // RewriteHelper->addStringBeforeStmt(TheIfStmt, CondStr, NeedParen);
-
-  // RewriteHelper->removeIfAndCond(TheIfStmt);
-
-  // const Stmt *ElseS = TheIfStmt->getElse();
-  // if (ElseS) {
-  //  SourceLocation ElseLoc = TheIfStmt->getElseLoc();
-  //  std::string ElseStr = "else";
-  //  TheRewriter.RemoveText(ElseLoc, ElseStr.size());
-  //}
-}
+void GlobalReduction::globalReduction(void) { ddmin(decls); }
 
 GlobalReduction::~GlobalReduction(void) { delete CollectionVisitor; }
