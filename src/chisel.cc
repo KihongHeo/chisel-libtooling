@@ -40,22 +40,22 @@ int main(int argc, char **argv) {
   TransMgr->setSrcFileName(Option::inputFile);
 
   int wc = 0, wc0 = 0;
-  //	while (true) {
-  wc0 = Stats::getWordCount(Option::inputFile.c_str());
-  if (!Option::skipGlobal) {
-    TransMgr->setTransformation("global-reduction");
-    TransMgr->initializeCompilerInstance(ErrorMsg);
-    TransMgr->doTransformation(ErrorMsg, ErrorCode);
+  while (true) {
+    wc0 = Stats::getWordCount(Option::inputFile.c_str());
+    if (!Option::skipGlobal) {
+      TransMgr->setTransformation("global-reduction");
+      TransMgr->initializeCompilerInstance(ErrorMsg);
+      TransMgr->doTransformation(ErrorMsg, ErrorCode);
+    }
+    if (!Option::skipLocal) {
+      TransMgr->setTransformation("local-reduction");
+      TransMgr->initializeCompilerInstance(ErrorMsg);
+      TransMgr->doTransformation(ErrorMsg, ErrorCode);
+    }
+    wc = Stats::getWordCount(Option::inputFile.c_str());
+    if (wc == wc0)
+      break;
   }
-  if (!Option::skipLocal) {
-    TransMgr->setTransformation("local-reduction");
-    TransMgr->initializeCompilerInstance(ErrorMsg);
-    TransMgr->doTransformation(ErrorMsg, ErrorCode);
-  }
-  wc = Stats::getWordCount(Option::inputFile.c_str());
-  //	  if (wc == wc0)
-  //			break;
-  //	}
 
   if (Option::profile)
     Report::totalProfiler.stopTimer();

@@ -28,7 +28,7 @@ private:
   virtual bool HandleTopLevelDecl(clang::DeclGroupRef D);
   virtual void HandleTranslationUnit(clang::ASTContext &Ctx);
   void localReduction(void);
-  std::vector<clang::Stmt *> &getImmediateChildren(clang::Stmt *s);
+  std::vector<clang::Stmt *> getImmediateChildren(clang::Stmt *s);
   std::vector<clang::Stmt *> getBodyStatements(clang::CompoundStmt *s);
   void hdd(clang::Stmt *s);
   void ddmin(std::vector<clang::Stmt *> stmts);
@@ -47,6 +47,5 @@ private:
 
   std::vector<clang::Stmt *> functionBodies;
   std::queue<clang::Stmt *> q;
-  std::vector<clang::SourceRange *> removedRanges;
 };
 #endif

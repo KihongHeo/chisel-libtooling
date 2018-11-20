@@ -14,6 +14,7 @@
 #include "StringUtils.h"
 #include "TransformationManager.h"
 #include "VectorUtils.h"
+#include "Report.h"
 
 using namespace clang;
 
@@ -118,7 +119,9 @@ bool GlobalReduction::test(std::vector<clang::Decl *> &toBeRemoved) {
                           StringUtils::placeholder(revert));
   Transformation::writeToFile(Option::inputFile);
 
+	Report::globalCallsCounter.increment();
   if (system(Option::oracleFile.c_str()) == 0) {
+		Report::successfulGlobalCallsCounter.increment();
     return true;
   } else {
     // revert
