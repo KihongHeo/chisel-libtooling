@@ -13,6 +13,9 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "Options.h"
+#include "Report.h"
+
 using namespace clang;
 
 class TransNameQueryVisitor
@@ -1012,6 +1015,29 @@ void Transformation::printToTerminal() {
   if (buffer != nullptr)
     buffer->write(llvm::outs());
   llvm::outs() << "=========================\n";
+}
+
+bool Transformation::callOracle(std::string msg) {
+  if (msg == "global")
+    Report::globalCallsCounter.increment();
+  else if (msg == "local" || msg == "if" || msg == "loop")
+    Report::localCallsCounter.increment();
+  int totalCalls =
+      Report::localCallsCounter.count() + Report::globalCallsCounter.count();
+  std::string tempName = Option::outputDir + "/" + Option::inputFile + "." +
+                         std::to_string(totalCalls) + "." + msg + ".";
+  if (system(Option::oracleFile.c_str()) == 0) {
+    if (msg == "global")
+      Report::successfulGlobalCallsCounter.increment();
+    else if (msg == "local" || msg == "if" || msg == "loop")
+      Report::successfulLocalCallsCounter.increment();
+    if (Option::saveTemp)
+      Transformation::writeToFile(tempName + "success.c");
+    return true;
+  }
+  if (Option::saveTemp)
+    Transformation::writeToFile(tempName + "fail.c");
+  return false;
 }
 
 Transformation::~Transformation(void) { RewriteUtils::Finalize(); }

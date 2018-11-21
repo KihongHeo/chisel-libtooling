@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
   int wc = 0, wc0 = 0;
   while (true) {
     wc0 = Stats::getWordCount(Option::inputFile.c_str());
+
     if (!Option::skipGlobal) {
       TransMgr->setTransformation("global-reduction");
       TransMgr->initializeCompilerInstance(ErrorMsg);
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
       TransMgr->initializeCompilerInstance(ErrorMsg);
       TransMgr->doTransformation(ErrorMsg, ErrorCode);
     }
+
     wc = Stats::getWordCount(Option::inputFile.c_str());
     if (wc == wc0)
       break;

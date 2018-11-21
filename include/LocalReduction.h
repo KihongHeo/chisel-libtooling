@@ -33,7 +33,6 @@ private:
   void hdd(clang::Stmt *s);
   void ddmin(std::vector<clang::Stmt *> stmts);
   bool test(std::vector<clang::Stmt *> &toBeRemoved);
-  bool testEmpty();
   LocalReductionCollectionVisitor *CollectionVisitor;
 
   void reduceIf(clang::IfStmt *IS);

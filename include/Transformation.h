@@ -272,6 +272,8 @@ protected:
   void writeToFile(std::string filename);
 
   void printToTerminal();
+
+  bool callOracle(std::string msg);
 };
 
 class TransNameQueryVisitor;

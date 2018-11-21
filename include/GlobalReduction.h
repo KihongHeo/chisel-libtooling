@@ -30,7 +30,8 @@ private:
   void ddmin(std::vector<clang::Decl *> &decls);
   bool test(std::vector<clang::Decl *> &toBeRemoved);
   GlobalReductionCollectionVisitor *CollectionVisitor;
-
+  std::vector<std::vector<clang::Decl *>>
+  refineSubsets(std::vector<std::vector<clang::Decl *>> &subsets);
   GlobalReduction(void);
   GlobalReduction(const GlobalReduction &);
   void operator=(const GlobalReduction &);

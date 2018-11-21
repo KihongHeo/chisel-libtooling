@@ -10,15 +10,13 @@
 #include "CommonStatementVisitor.h"
 #include "LocalReduction.h"
 #include "Options.h"
+#include "Report.h"
 #include "RewriteUtils.h"
 #include "StringUtils.h"
 #include "TransformationManager.h"
 #include "VectorUtils.h"
-#include "Report.h"
 
 using namespace clang;
-
-int i = 0;
 
 static const char *DescriptionMsg = "Perform local-level reduction";
 
@@ -29,7 +27,6 @@ public:
       : ConsumerInstance(Instance) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD);
-  void clearFunctionBodies() { ConsumerInstance->functionBodies.clear(); }
 
 private:
   LocalReduction *ConsumerInstance;
@@ -50,7 +47,6 @@ bool LocalReductionCollectionVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 void LocalReduction::Initialize(ASTContext &context) {
   Transformation::Initialize(context);
   CollectionVisitor = new LocalReductionCollectionVisitor(this);
-  CollectionVisitor->clearFunctionBodies();
 }
 
 bool LocalReduction::HandleTopLevelDecl(DeclGroupRef D) {
@@ -64,22 +60,11 @@ void LocalReduction::HandleTranslationUnit(ASTContext &Ctx) {
   localReduction();
 }
 
-bool LocalReduction::testEmpty() {
-	Report::localCallsCounter.increment();
-  if (system(Option::oracleFile.c_str()) == 0) {
-		Report::successfulLocalCallsCounter.increment();
-    return true;
-	}
-  return false;
-}
-
 bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
   const SourceManager *SM = &Context->getSourceManager();
   SourceLocation totalStart, totalEnd;
   totalStart = toBeRemoved.front()->getSourceRange().getBegin();
   Stmt *last = toBeRemoved.back();
-
-  std::string kind(last->getStmtClassName());
 
   if (CompoundStmt *CS = dyn_cast<CompoundStmt>(last)) {
     totalEnd = CS->getRBracLoc().getLocWithOffset(1);
@@ -124,25 +109,15 @@ bool LocalReduction::test(std::vector<clang::Stmt *> &toBeRemoved) {
   if (totalEnd.isInvalid() || totalStart.isInvalid())
     return false;
 
-  kind += "-" + std::to_string(toBeRemoved.size());
   std::string revert =
       Transformation::getSourceText(SourceRange(totalStart, totalEnd));
   TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd),
                           StringUtils::placeholder(revert));
   Transformation::writeToFile(Option::inputFile);
 
-  i++;
-  if (testEmpty()) {
-    if (Option::saveTemp)
-      Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
-                                  "." + std::to_string(i) + "." + kind +
-                                  ".success.c");
+  if (Transformation::callOracle("local")) {
     return true;
   } else {
-    if (Option::saveTemp)
-      Transformation::writeToFile(Option::outputDir + "/" + Option::inputFile +
-                                  "." + std::to_string(i) + "." + kind +
-                                  ".fail.c");
     TheRewriter.ReplaceText(SourceRange(totalStart, totalEnd), revert);
     Transformation::writeToFile(Option::inputFile);
     return false;
@@ -238,7 +213,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
     TheRewriter.ReplaceText(SourceRange(elseLoc, endIf),
                             StringUtils::placeholder(elsePart));
     Transformation::writeToFile(Option::inputFile);
-    if (testEmpty()) { // successfully remove else branch
+    if (Transformation::callOracle("if")) { // successfully remove else branch
       q.push(Then);
     } else { // revert else branch removal
       TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
@@ -249,7 +224,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
       TheRewriter.ReplaceText(SourceRange(beginIf, elseLoc.getLocWithOffset(4)),
                               StringUtils::placeholder(ifAndThenAndElseWord));
       Transformation::writeToFile(Option::inputFile);
-      if (testEmpty()) { // successfully remove then branch
+      if (Transformation::callOracle("if")) { // successfully remove then branch
         q.push(ElseAsCompoundStmt);
       } else { // revert then branch removal
         TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
@@ -265,7 +240,7 @@ void LocalReduction::reduceIf(IfStmt *IS) {
     TheRewriter.ReplaceText(SourceRange(beginIf, endCond),
                             StringUtils::placeholder(ifAndCond));
     Transformation::writeToFile(Option::inputFile);
-    if (testEmpty()) {
+    if (Transformation::callOracle("if")) {
       q.push(Then);
     } else {
       TheRewriter.ReplaceText(SourceRange(beginIf, endIf), revertIf);
@@ -290,7 +265,7 @@ void LocalReduction::reduceWhile(WhileStmt *WS) {
   TheRewriter.ReplaceText(SourceRange(beginWhile, endCond),
                           StringUtils::placeholder(whileAndCond));
   Transformation::writeToFile(Option::inputFile);
-  if (testEmpty()) {
+  if (Transformation::callOracle("loop")) {
     q.push(body);
   } else {
     // revert
@@ -316,6 +291,7 @@ void LocalReduction::reduceLabel(LabelStmt *LS) {
 void LocalReduction::hdd(Stmt *s) {
   if (s == NULL)
     return;
+
   if (IfStmt *IS = dyn_cast<IfStmt>(s)) {
     if (Option::verbose)
       llvm::outs() << "hhd: if\n";
